@@ -10,3 +10,42 @@
     font-family: sans-serif;
   }
 }
+
+/* --- LocationPicker --- */
+
+.location-picker {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.location-picker-title {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.manual-entry summary {
+  cursor: pointer;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.manual-entry-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.manual-entry-row input {
+  flex: 1;
+  min-width: 0;
+}
+
+.resolved-label {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--ok);
+}
