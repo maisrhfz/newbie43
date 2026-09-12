@@ -5,6 +5,7 @@ import { EventForm, type TripPlan } from "@/components/EventForm";
 import { DepartureBanner } from "@/components/DepartureBanner";
 import { CircularTimer, type TimeBlock } from "@/components/CircularTimer";
 import { GroupMeetupPlanner, type GroupParticipant } from "@/components/GroupMeetupPlanner";
+import { MapEmbed } from "@/components/MapEmbed";
 import { getNaverMapUrl } from "@/lib/presets";
 import type { LatLng } from "@/lib/types";
 
@@ -36,14 +37,20 @@ const formatDecimalToTime = (decimalHours: number): string => {
   return `${formattedH}:${formattedM}`;
 };
 
+const timeStringToDecimal = (timeStr: string): number => {
+  if (!timeStr) return 0;
+  const [hours, minutes] = timeStr.split(":").map(Number);
+  return (hours || 0) + (minutes || 0) / 60;
+};
+
 export default function Home() {
   const [result, setResult] = useState<ApiResponse | null>(null);
   const [lastPlan, setLastPlan] = useState<TripPlan | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const buildShareText = (): string => {
 
+  const buildShareText = (): string => {
     if (!result || !lastPlan) return "";
     const leaveTime = new Date(result.departureDeadline).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     const eventTime = new Date(result.eventTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
@@ -64,13 +71,14 @@ export default function Home() {
   };
 
   const [tasks, setTasks] = useState<TimeBlock[]>([
-    { id: "1", label: "Morning Study", startHour: 9, endHour: 12, color: "#3b82f6" },
+    { id: "1", label: "Morning Study", startHour: 9, endHour: 12, color: "#6366f1" },
     { id: "2", label: "Lunch", startHour: 12, endHour: 13, color: "#10b981" },
   ]);
 
+  // Task Input Form State with minute-level precision
   const [taskLabel, setTaskLabel] = useState("");
-  const [startHour, setStartHour] = useState("14");
-  const [endHour, setEndHour] = useState("16");
+  const [startTime, setStartTime] = useState("14:00");
+  const [endTime, setEndTime] = useState("16:00");
 
   const [participants, setParticipants] = useState<GroupParticipant[]>([]);
 
@@ -85,8 +93,8 @@ export default function Home() {
     const newTask: TimeBlock = {
       id: Date.now().toString(),
       label: taskLabel.trim(),
-      startHour: parseFloat(startHour),
-      endHour: parseFloat(endHour),
+      startHour: timeStringToDecimal(startTime),
+      endHour: timeStringToDecimal(endTime),
       color: "#8b5cf6",
     };
     setTasks([...tasks, newTask]);
@@ -226,74 +234,150 @@ export default function Home() {
   };
 
   return (
-    <main className="page" style={{ maxWidth: 900, margin: "0 auto", padding: 16 }}>
+    <main className="page" style={{ maxWidth: 850, margin: "0 auto", padding: 16 }}>
+      {/* Route Calculator Card */}
       <section className="card">
         <h1>24-Hour Visual Day & Departure Planner</h1>
         <p className="subtitle">
           Set your commute route and plan your daily task schedule on a live visual clock ring.
         </p>
         <EventForm onSubmit={handleSubmit} submitting={submitting} />
-        {apiError && <p className="hint hint-error">{apiError}</p>}
+        {apiError && <p className="hint hint-error" style={{ marginTop: 12 }}>{apiError}</p>}
       </section>
 
+      {/* 24-Hour Ring & Modern Task Manager Section */}
       <section className="card" style={{ marginTop: 20 }}>
         <h2>Daily Routine & Live Ring</h2>
         <CircularTimer blocks={combinedBlocks} />
 
-        <form onSubmit={handleAddTask} style={{ display: "flex", gap: 8, marginTop: 16, flexWrap: "wrap" }}>
+        {/* Modern Control Bar with Precise Time Selection */}
+        <form
+          onSubmit={handleAddTask}
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: "10px",
+            alignItems: "center",
+            backgroundColor: "rgba(255, 255, 255, 0.03)",
+            padding: "10px",
+            borderRadius: "16px",
+            border: "1px solid rgba(255, 255, 255, 0.08)",
+            marginTop: "20px",
+            marginBottom: "20px",
+          }}
+        >
           <input
             type="text"
             placeholder="New task name..."
             value={taskLabel}
             onChange={(e) => setTaskLabel(e.target.value)}
-            style={{ flex: 2, padding: 8, borderRadius: 6, border: "1px solid var(--border)" }}
+            style={{
+              flex: "1 1 200px",
+              padding: "10px 14px",
+              borderRadius: "10px",
+              border: "1px solid rgba(255, 255, 255, 0.12)",
+              backgroundColor: "rgba(15, 23, 42, 0.6)",
+              color: "#f8fafc",
+              fontSize: "0.9rem",
+              outline: "none",
+            }}
           />
-          <select value={startHour} onChange={(e) => setStartHour(e.target.value)} style={{ padding: 8 }}>
-            {Array.from({ length: 24 }).map((_, i) => (
-              <option key={i} value={i}>{`${i}:00`}</option>
-            ))}
-          </select>
-          <select value={endHour} onChange={(e) => setEndHour(e.target.value)} style={{ padding: 8 }}>
-            {Array.from({ length: 24 }).map((_, i) => (
-              <option key={i} value={i}>{`${i}:00`}</option>
-            ))}
-          </select>
-          <button type="submit" style={{ padding: "8px 16px", borderRadius: 6, cursor: "pointer" }}>
-            Add Task
+
+          <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+            <input
+              type="time"
+              value={startTime}
+              onChange={(e) => setStartTime(e.target.value)}
+              style={{
+                padding: "9px 12px",
+                borderRadius: "10px",
+                border: "1px solid rgba(255, 255, 255, 0.12)",
+                backgroundColor: "rgba(15, 23, 42, 0.6)",
+                color: "#f8fafc",
+                fontSize: "0.9rem",
+                outline: "none",
+                colorScheme: "dark",
+              }}
+            />
+
+            <span style={{ color: "#64748b", fontSize: "0.85rem" }}>to</span>
+
+            <input
+              type="time"
+              value={endTime}
+              onChange={(e) => setEndTime(e.target.value)}
+              style={{
+                padding: "9px 12px",
+                borderRadius: "10px",
+                border: "1px solid rgba(255, 255, 255, 0.12)",
+                backgroundColor: "rgba(15, 23, 42, 0.6)",
+                color: "#f8fafc",
+                fontSize: "0.9rem",
+                outline: "none",
+                colorScheme: "dark",
+              }}
+            />
+          </div>
+
+          <button
+            type="submit"
+            style={{
+              padding: "10px 20px",
+              borderRadius: "10px",
+              border: "none",
+              background: "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)",
+              color: "#ffffff",
+              fontWeight: "600",
+              fontSize: "0.9rem",
+              cursor: "pointer",
+              boxShadow: "0 4px 12px rgba(99, 102, 241, 0.3)",
+            }}
+          >
+            + Add Task
           </button>
         </form>
 
-        <div style={{ marginTop: 16 }}>
-          <h3>Today&apos;s Scheduled Tasks</h3>
-          <ul style={{ listStyle: "none", padding: 0 }}>
+        {/* Scheduled Task List */}
+        <div>
+          <h3 style={{ fontSize: "0.95rem", color: "var(--text-secondary)", marginBottom: "12px" }}>
+            Today&apos;s Scheduled Tasks
+          </h3>
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
             {combinedBlocks.map((task) => (
-              <li
+              <div
                 key={task.id}
                 style={{
                   display: "flex",
                   justifyContent: "space-between",
-                  padding: "8px 12px",
-                  marginBottom: 6,
-                  borderRadius: 6,
-                  borderLeft: `6px solid ${task.color}`,
-                  background: "var(--surface)",
-                  border: "1px solid var(--border)",
+                  alignItems: "center",
+                  padding: "12px 16px",
+                  borderRadius: "12px",
+                  backgroundColor: "rgba(255, 255, 255, 0.03)",
+                  border: "1px solid rgba(255, 255, 255, 0.06)",
+                  borderLeft: `4px solid ${task.color}`,
                 }}
               >
-                <span>
-                  <strong>{task.label}</strong> ({formatDecimalToTime(task.startHour)} – {formatDecimalToTime(task.endHour)})
+                <span style={{ fontSize: "0.92rem", color: "#f8fafc" }}>
+                  <strong style={{ fontWeight: 600 }}>{task.label}</strong> ({formatDecimalToTime(task.startHour)} – {formatDecimalToTime(task.endHour)})
                 </span>
                 {task.id !== "commute-naver" && (
                   <button
                     onClick={() => removeTask(task.id)}
-                    style={{ color: "red", border: "none", background: "none", cursor: "pointer" }}
+                    style={{
+                      color: "#ef4444",
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      fontSize: "1.1rem",
+                      padding: "0 4px",
+                    }}
                   >
                     ✕
                   </button>
                 )}
-              </li>
+              </div>
             ))}
-          </ul>
+          </div>
         </div>
       </section>
 
@@ -305,26 +389,27 @@ export default function Home() {
         </section>
       )}
 
+      {/* Trip Results, Interactive Map & NAVER Button */}
       {result && lastPlan && (
         <section className="card" style={{ marginTop: 20 }}>
           <DepartureBanner eventTime={result.eventTime} departureDeadline={result.departureDeadline} />
 
-          <div className="trip-breakdown">
+          <div className="trip-breakdown" style={{ marginTop: 20 }}>
             <h2>Trip breakdown</h2>
-            <ul>
+            <ul style={{ paddingLeft: 20, lineHeight: 1.6 }}>
               {(() => {
-                    const distanceKm = result.estimate.distanceMeters / 1000;
-                    const isLongWalk = result.estimate.mode === "walk" && distanceKm > 3;
-                    const isLongDistance = distanceKm > 15;
-                    if (!isLongWalk && !isLongDistance) return null;
-                    return (
-                      <p className="distance-warning">
-                        {isLongDistance
-                          ? `⚠️ This event is ${distanceKm.toFixed(1)} km away — that's beyond what this app's estimator is built for (campus-area walking/bus/subway). For trips this long, double-check real bus/train schedules directly, since this number may not be accurate.`
-                          : `⚠️ That's a ${distanceKm.toFixed(1)} km walk — likely 30+ minutes on foot. Consider switching to Transit or Drive above for a more realistic time.`}
-                      </p>
-                    );
-                  })()}
+                const distanceKm = result.estimate.distanceMeters / 1000;
+                const isLongWalk = result.estimate.mode === "walk" && distanceKm > 3;
+                const isLongDistance = distanceKm > 15;
+                if (!isLongWalk && !isLongDistance) return null;
+                return (
+                  <p className="distance-warning">
+                    {isLongDistance
+                      ? `⚠️ This event is ${distanceKm.toFixed(1)} km away — that's beyond what this app's estimator is built for (campus-area walking/bus/subway). For trips this long, double-check real bus/train schedules directly, since this number may not be accurate.`
+                      : `⚠️ That's a ${distanceKm.toFixed(1)} km walk — likely 30+ minutes on foot. Consider switching to Transit or Drive above for a more realistic time.`}
+                  </p>
+                );
+              })()}
               <li>Mode: {result.estimate.mode}</li>
               <li>Distance: {(result.estimate.distanceMeters / 1000).toFixed(2)} km</li>
               <li>Total travel time: {result.estimate.totalTravelMinutes} min</li>
@@ -344,32 +429,38 @@ export default function Home() {
             <button type="button" className="btn btn-secondary" style={{ width: "100%", marginTop: "0.75rem" }} onClick={handleShare}>
               {copied ? "✓ Copied to clipboard!" : "📋 Share this plan"}
             </button>
+
             {lastPlan.origin && lastPlan.destination && (
-              <div style={{ marginTop: "1.25rem" }}>
-                <a
-                  href={getNaverMapUrl(
-                    lastPlan.origin,
-                    lastPlan.destination,
-                    lastPlan.destinationLabel ?? "Destination",
-                    lastPlan.mode
-                  )}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{
-                    display: "block",
-                    width: "100%",
-                    padding: "0.75rem",
-                    backgroundColor: "#03C75A",
-                    color: "#ffffff",
-                    fontWeight: "bold",
-                    textAlign: "center",
-                    borderRadius: "8px",
-                    textDecoration: "none",
-                  }}
-                >
-                  Open Route in NAVER Map
-                </a>
-              </div>
+              <>
+                <MapEmbed origin={lastPlan.origin} destination={lastPlan.destination} />
+
+                <div style={{ marginTop: "1rem" }}>
+                  
+                    href={getNaverMapUrl(
+                      lastPlan.origin,
+                      lastPlan.destination,
+                      lastPlan.destinationLabel ?? "Destination",
+                      lastPlan.mode
+                    )}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      display: "block",
+                      width: "100%",
+                      padding: "0.85rem",
+                      backgroundColor: "#03C75A",
+                      color: "#ffffff",
+                      fontWeight: "bold",
+                      textAlign: "center",
+                      borderRadius: "12px",
+                      textDecoration: "none",
+                      boxShadow: "0 4px 12px rgba(3, 199, 90, 0.25)",
+                    }}
+                  >
+                    🗺️ Open Route in NAVER Map
+                  </a>
+                </div>
+              </>
             )}
 
             <p className="hint" style={{ marginTop: "1rem" }}>
