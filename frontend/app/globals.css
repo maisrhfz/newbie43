@@ -43,6 +43,13 @@ input, select {
   padding: 8px 10px;
   background: var(--bg);
   color: var(--text);
+  width: 100%;
+  max-width: 100%;
+}
+select {
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
 }
 button {
   border: none;
@@ -56,6 +63,7 @@ button {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  min-width: 0; /* allow this card to shrink inside its grid column */
 }
 
 .location-picker-title {
@@ -84,6 +92,9 @@ button {
   margin: 0;
   font-size: 0.85rem;
   color: var(--ok);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 
@@ -136,14 +147,16 @@ button {
 .theme-toggle { background: var(--surface); border: 1px solid var(--border); color: var(--text); border-radius: 999px; padding: 6px 14px; cursor: pointer; font-size: 0.85rem; }
 .site-footer { text-align: center; color: var(--text-muted); font-size: 0.8rem; padding: 24px 12px; }
 .page { max-width: 640px; margin: 0 auto; padding: 24px 16px 60px; display: flex; flex-direction: column; gap: 20px; }
-.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; overflow: hidden; }
 h1 { margin: 0 0 6px; font-size: 1.5rem; }
 h2 { font-size: 1.1rem; margin: 0 0 10px; }
 .subtitle { color: var(--text-muted); margin: 0 0 20px; font-size: 0.95rem; }
 .event-form { display: flex; flex-direction: column; gap: 18px; }
 .picker-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.picker-grid > * { min-width: 0; }
 @media (max-width: 560px) { .picker-grid { grid-template-columns: 1fr; } }
 .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.field-row > * { min-width: 0; }
 @media (max-width: 560px) { .field-row { grid-template-columns: 1fr; } }
 .mode-toggle { display: flex; gap: 8px; }
 .mode-btn { flex: 1; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); cursor: pointer; font-size: 0.9rem; }
@@ -157,6 +170,7 @@ h2 { font-size: 1.1rem; margin: 0 0 10px; }
   gap: 4px;
   font-size: 0.85rem;
   color: var(--text-muted);
+  min-width: 0;
 }
 .field > span {
   font-weight: 600;
