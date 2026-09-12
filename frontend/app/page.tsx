@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { EventForm, type TripPlan } from "@/components/EventForm";
 import { DepartureBanner } from "@/components/DepartureBanner";
 import { CircularTimer, type TimeBlock } from "@/components/CircularTimer";
+import { GroupMeetupPlanner, type GroupParticipant } from "@/components/GroupMeetupPlanner";
 import { MapEmbed } from "@/components/MapEmbed";
 import { getNaverMapUrl } from "@/lib/presets";
+import type { LatLng } from "@/lib/types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
 
@@ -30,10 +32,8 @@ type ApiResponse = {
 const formatDecimalToTime = (decimalHours: number): string => {
   const hours = Math.floor(decimalHours);
   const minutes = Math.round((decimalHours - hours) * 60);
-
   const formattedH = String(hours % 24).padStart(2, "0");
   const formattedM = String(minutes).padStart(2, "0");
-
   return `${formattedH}:${formattedM}`;
 };
 
@@ -48,8 +48,28 @@ export default function Home() {
   const [lastPlan, setLastPlan] = useState<TripPlan | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
-  // Dynamic To-Do List State
+  const buildShareText = (): string => {
+    if (!result || !lastPlan) return "";
+    const leaveTime = new Date(result.departureDeadline).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    const eventTime = new Date(result.eventTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    const modeLabel = result.estimate.mode === "walk" ? "🚶 walking" : result.estimate.mode === "transit" ? "🚇 transit" : "🚗 driving";
+    return `📍 Heading to ${lastPlan.destinationLabel ?? "the event"} (starts ${eventTime})\n⏰ Leaving by ${leaveTime} — ${modeLabel}, ~${result.estimate.totalTravelMinutes} min\nMade with "Will I be late?" 🕒`;
+  };
+
+  const handleShare = async () => {
+    const text = buildShareText();
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setCopied(false);
+    }
+  };
+
   const [tasks, setTasks] = useState<TimeBlock[]>([
     { id: "1", label: "Morning Study", startHour: 9, endHour: 12, color: "#6366f1" },
     { id: "2", label: "Lunch", startHour: 12, endHour: 13, color: "#10b981" },
@@ -60,6 +80,8 @@ export default function Home() {
   const [startTime, setStartTime] = useState("14:00");
   const [endTime, setEndTime] = useState("16:00");
 
+  const [participants, setParticipants] = useState<GroupParticipant[]>([]);
+
   const dateToDecimalHours = (dateString: string): number => {
     const d = new Date(dateString);
     return d.getHours() + d.getMinutes() / 60;
@@ -68,7 +90,6 @@ export default function Home() {
   const handleAddTask = (e: React.FormEvent) => {
     e.preventDefault();
     if (!taskLabel.trim()) return;
-
     const newTask: TimeBlock = {
       id: Date.now().toString(),
       label: taskLabel.trim(),
@@ -76,7 +97,6 @@ export default function Home() {
       endHour: timeStringToDecimal(endTime),
       color: "#8b5cf6",
     };
-
     setTasks([...tasks, newTask]);
     setTaskLabel("");
   };
@@ -87,11 +107,9 @@ export default function Home() {
 
   const combinedBlocks = useMemo(() => {
     const allBlocks = [...tasks];
-
     if (result) {
       const depH = dateToDecimalHours(result.departureDeadline);
       const eventH = dateToDecimalHours(result.eventTime);
-
       allBlocks.push({
         id: "commute-naver",
         label: "NAVER Commute & Trip",
@@ -100,9 +118,71 @@ export default function Home() {
         color: "#03C75A",
       });
     }
-
     return allBlocks;
   }, [tasks, result]);
+
+  // Keep "You" (the main submitter) synced as a participant in the group list
+  useEffect(() => {
+    if (result && lastPlan) {
+      setParticipants((prev) => {
+        const others = prev.filter((p) => p.id !== "you");
+        return [
+          {
+            id: "you",
+            name: "You",
+            origin: lastPlan.origin,
+            originLabel: lastPlan.originLabel,
+            status: "success",
+            departureDeadline: result.departureDeadline,
+            totalTravelMinutes: result.estimate.totalTravelMinutes,
+          },
+          ...others,
+        ];
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [result, lastPlan]);
+
+  const addParticipant = async (name: string, origin: LatLng, originLabel: string) => {
+    if (!lastPlan) {
+      setApiError("Submit the event details above first, then add group members.");
+      return;
+    }
+    const id = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    setParticipants((prev) => [...prev, { id, name, origin, originLabel, status: "loading" }]);
+
+    try {
+      const res = await fetch(`${API_BASE}/api/route`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          origin,
+          originLabel,
+          destination: lastPlan.destination,
+          destinationLabel: lastPlan.destinationLabel,
+          eventTime: lastPlan.eventTime,
+          bufferMinutes: lastPlan.bufferMinutes,
+          mode: lastPlan.mode,
+        }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error ?? `Request failed (${res.status})`);
+      }
+      const data = await res.json();
+      setParticipants((prev) =>
+        prev.map((p) =>
+          p.id === id
+            ? { ...p, status: "success", departureDeadline: data.departureDeadline, totalTravelMinutes: data.estimate.totalTravelMinutes }
+            : p
+        )
+      );
+    } catch (err: any) {
+      setParticipants((prev) => prev.map((p) => (p.id === id ? { ...p, status: "error", error: err.message ?? "Request failed" } : p)));
+    }
+  };
+
+  const removeParticipant = (id: string) => setParticipants((prev) => prev.filter((p) => p.id !== id));
 
   const handleSubmit = async (plan: TripPlan) => {
     const originLat = plan.origin?.lat ?? 0;
@@ -301,6 +381,14 @@ export default function Home() {
         </div>
       </section>
 
+      {lastPlan && (
+        <section className="card" style={{ marginTop: 20 }}>
+          <h2>Group meetup</h2>
+          <p className="subtitle">Add everyone else coming to this event — we&apos;ll work out each person&apos;s own leave-by time.</p>
+          <GroupMeetupPlanner participants={participants} onAdd={addParticipant} onRemove={removeParticipant} />
+        </section>
+      )}
+
       {/* Trip Results, Interactive Map & NAVER Button */}
       {result && lastPlan && (
         <section className="card" style={{ marginTop: 20 }}>
@@ -309,6 +397,19 @@ export default function Home() {
           <div className="trip-breakdown" style={{ marginTop: 20 }}>
             <h2>Trip breakdown</h2>
             <ul style={{ paddingLeft: 20, lineHeight: 1.6 }}>
+              {(() => {
+                const distanceKm = result.estimate.distanceMeters / 1000;
+                const isLongWalk = result.estimate.mode === "walk" && distanceKm > 3;
+                const isLongDistance = distanceKm > 15;
+                if (!isLongWalk && !isLongDistance) return null;
+                return (
+                  <p className="distance-warning">
+                    {isLongDistance
+                      ? `⚠️ This event is ${distanceKm.toFixed(1)} km away — that's beyond what this app's estimator is built for (campus-area walking/bus/subway). For trips this long, double-check real bus/train schedules directly, since this number may not be accurate.`
+                      : `⚠️ That's a ${distanceKm.toFixed(1)} km walk — likely 30+ minutes on foot. Consider switching to Transit or Drive above for a more realistic time.`}
+                  </p>
+                );
+              })()}
               <li>Mode: {result.estimate.mode}</li>
               <li>Distance: {(result.estimate.distanceMeters / 1000).toFixed(2)} km</li>
               <li>Total travel time: {result.estimate.totalTravelMinutes} min</li>
@@ -325,13 +426,16 @@ export default function Home() {
               <li>Buffer added: {result.bufferMinutes} min</li>
             </ul>
 
-            {/* Embedded Live Map Display */}
+            <button type="button" className="btn btn-secondary" style={{ width: "100%", marginTop: "0.75rem" }} onClick={handleShare}>
+              {copied ? "✓ Copied to clipboard!" : "📋 Share this plan"}
+            </button>
+
             {lastPlan.origin && lastPlan.destination && (
               <>
                 <MapEmbed origin={lastPlan.origin} destination={lastPlan.destination} />
 
                 <div style={{ marginTop: "1rem" }}>
-                  <a
+                  
                     href={getNaverMapUrl(
                       lastPlan.origin,
                       lastPlan.destination,
