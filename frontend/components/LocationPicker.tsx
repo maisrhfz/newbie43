@@ -97,7 +97,7 @@ export function LocationPicker({ title, allowGeolocation, onResolved, resolvedLa
 
       {allowGeolocation && (
         <button type="button" className="btn btn-secondary" onClick={handleGeolocate}>
-          {geo.status === "loading" ? "Locating…" : "📍 Use my location"}
+          {geo.status === "loading" ? "Locating…" : "Use my location"}
         </button>
       )}
       {geo.status === "error" && (

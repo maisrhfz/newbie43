@@ -179,15 +179,7 @@ button {
   font-size: 1.05rem; 
   letter-spacing: -0.01em;
 }
-.theme-toggle { 
-  background: var(--surface); 
-  border: 1px solid var(--border); 
-  color: var(--text); 
-  border-radius: 999px; 
-  padding: 6px 14px; 
-  cursor: pointer; 
-  font-size: 0.85rem; 
-}
+
 .site-footer { 
   text-align: center; 
   color: var(--text-muted); 
@@ -195,13 +187,21 @@ button {
   padding: 24px 12px; 
 }
 
+/* Side-by-side grid layout */
 .page { 
-  max-width: 640px; 
+  max-width: 1200px; 
   margin: 0 auto; 
   padding: 24px 16px 60px; 
-  display: flex; 
-  flex-direction: column; 
-  gap: 20px; 
+  display: grid; 
+  grid-template-columns: 1fr 1fr; 
+  gap: 24px; 
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .page {
+    grid-template-columns: 1fr;
+  }
 }
 
 .card { 

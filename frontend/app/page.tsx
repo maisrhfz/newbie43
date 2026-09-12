@@ -249,19 +249,115 @@ export default function Home() {
   };
 
   return (
-    <main className="page" style={{ maxWidth: 850, margin: "0 auto", padding: 16 }}>
-      {/* Route Calculator Card */}
-      <section className="card">
-        <h1>24-Hour Visual Day & Departure Planner</h1>
-        <p className="subtitle">
-          Set your commute route and plan your daily task schedule on a live visual clock ring.
-        </p>
-        <EventForm onSubmit={handleSubmit} submitting={submitting} />
-        {apiError && <p className="hint hint-error" style={{ marginTop: 12 }}>{apiError}</p>}
-      </section>
+    <main className="page">
+      {/* Column 1: Route Calculator & Trip Details */}
+      <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+        <section className="card">
+          <h1>24-Hour Visual Day & Departure Planner</h1>
+          <p className="subtitle">
+            Set your commute route and plan your daily task schedule on a live visual clock ring.
+          </p>
+          <EventForm onSubmit={handleSubmit} submitting={submitting} />
+          {apiError && <p className="hint hint-error" style={{ marginTop: 12 }}>{apiError}</p>}
+        </section>
 
-      {/* 24-Hour Ring & Modern Task Manager Section */}
-      <section className="card" style={{ marginTop: 20 }}>
+        {lastPlan && (
+          <section className="card">
+            <h2>Group meetup</h2>
+            <p className="subtitle">Add everyone else coming to this event — we&apos;ll work out each person&apos;s own leave-by time.</p>
+            <GroupMeetupPlanner participants={participants} onAdd={addParticipant} onRemove={removeParticipant} />
+          </section>
+        )}
+
+        {/* Trip Results, Interactive Map & NAVER Button */}
+        {result && lastPlan && (
+          <section className="card">
+            <DepartureBanner eventTime={result.eventTime} departureDeadline={result.departureDeadline} />
+
+            <div className="trip-breakdown" style={{ marginTop: 20 }}>
+              <h2>Trip breakdown</h2>
+              <ul style={{ paddingLeft: 20, lineHeight: 1.6 }}>
+                {(() => {
+                  const distanceKm = result.estimate.distanceMeters / 1000;
+                  const isLongWalk = result.estimate.mode === "walk" && distanceKm > 3;
+                  const isLongDistance = distanceKm > 15;
+                  if (!isLongWalk && !isLongDistance) return null;
+                  return (
+                    <p className="distance-warning">
+                      {isLongDistance
+                        ? `⚠️ This event is ${distanceKm.toFixed(1)} km away — that's beyond what this app's estimator is built for (campus-area walking/bus/subway). For trips this long, double-check real bus/train schedules directly, since this number may not be accurate.`
+                        : `⚠️ That's a ${distanceKm.toFixed(1)} km walk — likely 30+ minutes on foot. Consider switching to Transit or Drive above for a more realistic time.`}
+                    </p>
+                  );
+                })()}
+                <li>Mode: {result.estimate.mode}</li>
+                <li>Distance: {(result.estimate.distanceMeters / 1000).toFixed(2)} km</li>
+                <li>Total travel time: {result.estimate.totalTravelMinutes} min</li>
+                {result.estimate.nearestStation && <li>Nearest station: {result.estimate.nearestStation}</li>}
+                {result.estimate.walkToStationMinutes != null && (
+                  <li>Walk to station: {result.estimate.walkToStationMinutes} min</li>
+                )}
+                {result.estimate.inTransitMinutes != null && (
+                  <li>In transit: {result.estimate.inTransitMinutes} min</li>
+                )}
+                {result.estimate.walkFromStationMinutes != null && (
+                  <li>Walk from station: {result.estimate.walkFromStationMinutes} min</li>
+                )}
+                <li>Buffer added: {result.bufferMinutes} min</li>
+              </ul>
+
+              <button type="button" className="btn btn-secondary" style={{ width: "100%", marginTop: "0.75rem" }} onClick={handleShare}>
+                {copied ? "✓ Copied to clipboard!" : "📋 Share this plan"}
+              </button>
+
+              {lastPlan.origin && lastPlan.destination && (
+                <>
+                  <MapEmbed origin={lastPlan.origin} destination={lastPlan.destination} />
+
+                  <div style={{ marginTop: "1rem" }}>
+                    <a 
+                      href={getNaverMapUrl(
+                        lastPlan.origin,
+                        lastPlan.destination,
+                        lastPlan.destinationLabel ?? "Destination",
+                        lastPlan.mode
+                      )}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        display: "block",
+                        width: "100%",
+                        padding: "0.85rem",
+                        backgroundColor: "#03C75A",
+                        color: "#ffffff",
+                        fontWeight: "bold",
+                        textAlign: "center",
+                        borderRadius: "12px",
+                        textDecoration: "none",
+                        boxShadow: "0 4px 12px rgba(3, 199, 90, 0.25)",
+                      }}
+                    >
+                      🗺️ Open Route in NAVER Map
+                    </a>
+                  </div>
+                </>
+              )}
+
+              <p className="hint" style={{ marginTop: "1rem" }}>
+                {result.odsayConfigured
+                  ? result.estimate.usingRealApi
+                    ? "Live ODsay transit data."
+                    : "ODsay key is set, but this trip fell back to the estimator."
+                  : "Using the built-in estimator — add an ODSAY_API_KEY on the backend for live subway/bus routing."}
+                {result.estimate.notes ? ` ${result.estimate.notes}` : ""}
+              </p>
+            </div>
+          </section>
+        )}
+      </div>
+
+      {/* Column 2: 24-Hour Ring & Modern Task Manager Section */}
+      <section className="card">
         <h2>Daily Routine & Live Ring</h2>
         <CircularTimer blocks={combinedBlocks} />
 
@@ -354,7 +450,7 @@ export default function Home() {
 
         {/* Scheduled Task List */}
         <div>
-          <h3 style={{ fontSize: "0.95rem", color: "var(--text-secondary)", marginBottom: "12px" }}>
+          <h3 style={{ fontSize: "0.95rem", color: "var(--text-muted)", marginBottom: "12px" }}>
             Today&apos;s Scheduled Tasks
           </h3>
           <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
@@ -395,100 +491,6 @@ export default function Home() {
           </div>
         </div>
       </section>
-
-      {lastPlan && (
-        <section className="card" style={{ marginTop: 20 }}>
-          <h2>Group meetup</h2>
-          <p className="subtitle">Add everyone else coming to this event — we&apos;ll work out each person&apos;s own leave-by time.</p>
-          <GroupMeetupPlanner participants={participants} onAdd={addParticipant} onRemove={removeParticipant} />
-        </section>
-      )}
-
-      {/* Trip Results, Interactive Map & NAVER Button */}
-      {result && lastPlan && (
-        <section className="card" style={{ marginTop: 20 }}>
-          <DepartureBanner eventTime={result.eventTime} departureDeadline={result.departureDeadline} />
-
-          <div className="trip-breakdown" style={{ marginTop: 20 }}>
-            <h2>Trip breakdown</h2>
-            <ul style={{ paddingLeft: 20, lineHeight: 1.6 }}>
-              {(() => {
-                const distanceKm = result.estimate.distanceMeters / 1000;
-                const isLongWalk = result.estimate.mode === "walk" && distanceKm > 3;
-                const isLongDistance = distanceKm > 15;
-                if (!isLongWalk && !isLongDistance) return null;
-                return (
-                  <p className="distance-warning">
-                    {isLongDistance
-                      ? `⚠️ This event is ${distanceKm.toFixed(1)} km away — that's beyond what this app's estimator is built for (campus-area walking/bus/subway). For trips this long, double-check real bus/train schedules directly, since this number may not be accurate.`
-                      : `⚠️ That's a ${distanceKm.toFixed(1)} km walk — likely 30+ minutes on foot. Consider switching to Transit or Drive above for a more realistic time.`}
-                  </p>
-                );
-              })()}
-              <li>Mode: {result.estimate.mode}</li>
-              <li>Distance: {(result.estimate.distanceMeters / 1000).toFixed(2)} km</li>
-              <li>Total travel time: {result.estimate.totalTravelMinutes} min</li>
-              {result.estimate.nearestStation && <li>Nearest station: {result.estimate.nearestStation}</li>}
-              {result.estimate.walkToStationMinutes != null && (
-                <li>Walk to station: {result.estimate.walkToStationMinutes} min</li>
-              )}
-              {result.estimate.inTransitMinutes != null && (
-                <li>In transit: {result.estimate.inTransitMinutes} min</li>
-              )}
-              {result.estimate.walkFromStationMinutes != null && (
-                <li>Walk from station: {result.estimate.walkFromStationMinutes} min</li>
-              )}
-              <li>Buffer added: {result.bufferMinutes} min</li>
-            </ul>
-
-            <button type="button" className="btn btn-secondary" style={{ width: "100%", marginTop: "0.75rem" }} onClick={handleShare}>
-              {copied ? "✓ Copied to clipboard!" : "📋 Share this plan"}
-            </button>
-
-            {lastPlan.origin && lastPlan.destination && (
-              <>
-                <MapEmbed origin={lastPlan.origin} destination={lastPlan.destination} />
-
-                <div style={{ marginTop: "1rem" }}>
-                 <a 
-                    href={getNaverMapUrl(
-                      lastPlan.origin,
-                      lastPlan.destination,
-                      lastPlan.destinationLabel ?? "Destination",
-                      lastPlan.mode
-                    )}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{
-                      display: "block",
-                      width: "100%",
-                      padding: "0.85rem",
-                      backgroundColor: "#03C75A",
-                      color: "#ffffff",
-                      fontWeight: "bold",
-                      textAlign: "center",
-                      borderRadius: "12px",
-                      textDecoration: "none",
-                      boxShadow: "0 4px 12px rgba(3, 199, 90, 0.25)",
-                    }}
-                  >
-                    🗺️ Open Route in NAVER Map
-                  </a>
-                </div>
-              </>
-            )}
-
-            <p className="hint" style={{ marginTop: "1rem" }}>
-              {result.odsayConfigured
-                ? result.estimate.usingRealApi
-                  ? "Live ODsay transit data."
-                  : "ODsay key is set, but this trip fell back to the estimator."
-                : "Using the built-in estimator — add an ODSAY_API_KEY on the backend for live subway/bus routing."}
-              {result.estimate.notes ? ` ${result.estimate.notes}` : ""}
-            </p>
-          </div>
-        </section>
-      )}
     </main>
   );
 }
