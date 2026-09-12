@@ -44,11 +44,54 @@ const timeStringToDecimal = (timeStr: string): number => {
 };
 
 export default function Home() {
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  // Persistent states using localStorage
   const [result, setResult] = useState<ApiResponse | null>(null);
   const [lastPlan, setLastPlan] = useState<TripPlan | null>(null);
+  const [tasks, setTasks] = useState<TimeBlock[]>([]);
+
   const [submitting, setSubmitting] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+
+  // Load saved state on mount
+  useEffect(() => {
+    try {
+      const savedTasks = localStorage.getItem("scheduled_tasks");
+      if (savedTasks) setTasks(JSON.parse(savedTasks));
+
+      const savedResult = localStorage.getItem("trip_result");
+      if (savedResult) setResult(JSON.parse(savedResult));
+
+      const savedPlan = localStorage.getItem("trip_plan");
+      if (savedPlan) setLastPlan(JSON.parse(savedPlan));
+    } catch {
+      // Ignore parse errors
+    }
+    setIsLoaded(true);
+  }, []);
+
+  // Sync state to localStorage
+  useEffect(() => {
+    if (isLoaded) {
+      localStorage.setItem("scheduled_tasks", JSON.stringify(tasks));
+    }
+  }, [tasks, isLoaded]);
+
+  useEffect(() => {
+    if (isLoaded) {
+      if (result) localStorage.setItem("trip_result", JSON.stringify(result));
+      else localStorage.removeItem("trip_result");
+    }
+  }, [result, isLoaded]);
+
+  useEffect(() => {
+    if (isLoaded) {
+      if (lastPlan) localStorage.setItem("trip_plan", JSON.stringify(lastPlan));
+      else localStorage.removeItem("trip_plan");
+    }
+  }, [lastPlan, isLoaded]);
 
   const buildShareText = (): string => {
     if (!result || !lastPlan) return "";
@@ -84,28 +127,6 @@ export default function Home() {
       setCopied(false);
     }
   };
-
-  // Safe client-side hydration for localStorage
-  const [tasks, setTasks] = useState<TimeBlock[]>([]);
-  const [isLoaded, setIsLoaded] = useState(false);
-
-  useEffect(() => {
-    const saved = localStorage.getItem("scheduled_tasks");
-    if (saved) {
-      try {
-        setTasks(JSON.parse(saved));
-      } catch {
-        // Fallback to empty if parse fails
-      }
-    }
-    setIsLoaded(true);
-  }, []);
-
-  useEffect(() => {
-    if (isLoaded) {
-      localStorage.setItem("scheduled_tasks", JSON.stringify(tasks));
-    }
-  }, [tasks, isLoaded]);
 
   // Task Input Form State with minute-level precision
   const [taskLabel, setTaskLabel] = useState("");

@@ -26,7 +26,10 @@ export function CircularTimer({ blocks = [] }: Props) {
   if (!isMounted) return <div style={{ height: 320 }} />;
 
   const currentHours = now.getHours() + now.getMinutes() / 60 + now.getSeconds() / 3600;
-  const currentAngle = (currentHours / 24) * 360;
+  
+  // 24-hour circle math: 24 hours = 360 degrees. 
+  // We subtract 90 degrees so that 00:00 starts at the top (12 o'clock position).
+  const currentAngle = (currentHours / 24) * 360 - 90;
 
   const getArcPath = (startH: number, endH: number, radius = 115) => {
     const startAngle = (startH / 24) * 360 - 90;
@@ -40,7 +43,8 @@ export function CircularTimer({ blocks = [] }: Props) {
     const x2 = 150 + radius * Math.cos(endRad);
     const y2 = 150 + radius * Math.sin(endRad);
 
-    const largeArcFlag = endH - startH > 12 ? 1 : 0;
+    const diff = endH - startH;
+    const largeArcFlag = diff > 12 || (diff < 0 && (24 + diff) > 12) ? 1 : 0;
 
     return `M 150 150 L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArcFlag} 1 ${x2} ${y2} Z`;
   };
@@ -56,29 +60,23 @@ export function CircularTimer({ blocks = [] }: Props) {
         }}
       >
         <defs>
-          {/* Outer ring subtle ambient gradient */}
           <linearGradient id="ringBg" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stopColor="#1e293b" />
             <stop offset="100%" stopColor="#0f172a" />
           </linearGradient>
 
-          {/* Sweeping hand neon gradient */}
           <linearGradient id="handGradient" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stopColor="#ff4b5c" />
             <stop offset="100%" stopColor="#ff6b81" />
           </linearGradient>
 
-          {/* Glow effect filter */}
           <filter id="neonGlow" x="-20%" y="-20%" width="140%" height="140%">
             <feGaussianBlur stdDeviation="3" result="blur" />
             <feComposite in="SourceGraphic" in2="blur" operator="over" />
           </filter>
         </defs>
 
-        {/* Outer Minimalist Glass Ring */}
         <circle cx="150" cy="150" r="132" fill="none" stroke="#334155" strokeWidth="1.5" opacity="0.6" />
-        
-        {/* Main Clock Face Background */}
         <circle cx="150" cy="150" r="126" fill="url(#ringBg)" stroke="#1e293b" strokeWidth="4" />
 
         {/* 24-Hour Tick Marks */}
@@ -115,22 +113,20 @@ export function CircularTimer({ blocks = [] }: Props) {
           </path>
         ))}
 
-        {/* Inner Cutout (Donut Ring Effect) */}
         <circle cx="150" cy="150" r="75" fill="#0f172a" stroke="#1e293b" strokeWidth="2" />
 
-        {/* Live Sweeping Hand with Glow */}
+        {/* Live Sweeping Hand */}
         <line
           x1="150"
           y1="150"
-          x2={150 + 112 * Math.cos(((currentAngle - 90) * Math.PI) / 180)}
-          y2={150 + 112 * Math.sin(((currentAngle - 90) * Math.PI) / 180)}
+          x2={150 + 112 * Math.cos((currentAngle * Math.PI) / 180)}
+          y2={150 + 112 * Math.sin((currentAngle * Math.PI) / 180)}
           stroke="url(#handGradient)"
           strokeWidth="3.5"
           strokeLinecap="round"
           filter="url(#neonGlow)"
         />
 
-        {/* Modern Center Pivot Dot */}
         <circle cx="150" cy="150" r="7" fill="#ff4b5c" />
         <circle cx="150" cy="150" r="3" fill="#ffffff" />
       </svg>
