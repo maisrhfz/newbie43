@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -13,7 +12,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <header className="site-header">
           <span className="site-title">NAVER Late</span>
-          <ThemeToggle />
         </header>
         {children}
         <footer className="site-footer">Built for Newbithon (뉴비톤) — Korea University</footer>

@@ -29,7 +29,7 @@ export function EventForm({ onSubmit, submitting }: Props) {
   const [destination, setDestination] = useState<LatLng | null>(null);
   const [destinationLabel, setDestinationLabel] = useState<string | null>(null);
   const [eventTime, setEventTime] = useState(defaultEventTime());
-  const [bufferMinutes, setBufferMinutes] = useState(10);
+  const [bufferMinutes, setBufferMinutes] = useState<number | "">(10);
   const [mode, setMode] = useState<TransportMode>("transit");
   const [error, setError] = useState<string | null>(null);
 
@@ -41,32 +41,65 @@ export function EventForm({ onSubmit, submitting }: Props) {
     }
     setError(null);
     onSubmit({
-      origin, originLabel: originLabel ?? "Origin",
-      destination, destinationLabel: destinationLabel ?? "Destination",
+      origin,
+      originLabel: originLabel ?? "Origin",
+      destination,
+      destinationLabel: destinationLabel ?? "Destination",
       eventTime: new Date(eventTime).toISOString(),
-      bufferMinutes, mode,
+      bufferMinutes: typeof bufferMinutes === "number" ? bufferMinutes : 0,
+      mode,
     });
   };
 
   return (
     <form className="event-form" onSubmit={handleSubmit}>
       <div className="picker-grid">
-        <LocationPicker title="Where are you now?" allowGeolocation
-          onResolved={(coords, label) => { setOrigin(coords); setOriginLabel(label); }}
-          resolvedLabel={originLabel} />
-        <LocationPicker title="Where's the event?"
-          onResolved={(coords, label) => { setDestination(coords); setDestinationLabel(label); }}
-          resolvedLabel={destinationLabel} />
+        <LocationPicker
+          title="Where are you now?"
+          allowGeolocation
+          onResolved={(coords, label) => {
+            setOrigin(coords);
+            setOriginLabel(label);
+          }}
+          resolvedLabel={originLabel}
+        />
+        <LocationPicker
+          title="Where's the event?"
+          onResolved={(coords, label) => {
+            setDestination(coords);
+            setDestinationLabel(label);
+          }}
+          resolvedLabel={destinationLabel}
+        />
       </div>
 
       <div className="field-row">
         <label className="field">
           <span>Event start time</span>
-          <input type="datetime-local" value={eventTime} onChange={(e) => setEventTime(e.target.value)} required />
+          <input
+            type="datetime-local"
+            value={eventTime}
+            onChange={(e) => setEventTime(e.target.value)}
+            required
+          />
         </label>
         <label className="field">
           <span>Buffer (minutes)</span>
-          <input type="number" min={0} max={120} value={bufferMinutes} onChange={(e) => setBufferMinutes(Math.max(0, Number(e.target.value)))} />
+          <input
+            type="number"
+            min={0}
+            max={120}
+            value={bufferMinutes}
+            onChange={(e) => {
+              const val = e.target.value;
+              if (val === "") {
+                setBufferMinutes("");
+              } else {
+                const parsed = parseInt(val, 10);
+                setBufferMinutes(isNaN(parsed) ? 0 : Math.max(0, parsed));
+              }
+            }}
+          />
         </label>
       </div>
 
@@ -74,8 +107,14 @@ export function EventForm({ onSubmit, submitting }: Props) {
         <span>How are you getting there?</span>
         <div className="mode-toggle" role="radiogroup" aria-label="Transport mode">
           {(["walk", "transit", "drive"] as TransportMode[]).map((m) => (
-            <button key={m} type="button" className={`mode-btn ${mode === m ? "mode-btn-active" : ""}`} onClick={() => setMode(m)} aria-pressed={mode === m}>
-              {m === "walk" ? "🚶 Walk" : m === "transit" ? "🚇 Transit" : "🚗 Drive"}
+            <button
+              key={m}
+              type="button"
+              className={`mode-btn ${mode === m ? "mode-btn-active" : ""}`}
+              onClick={() => setMode(m)}
+              aria-pressed={mode === m}
+            >
+              {m === "walk" ? "Walk" : m === "transit" ? "Transit" : "Drive"}
             </button>
           ))}
         </div>
