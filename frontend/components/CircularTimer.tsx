@@ -6,8 +6,8 @@ import { useNow } from "@/hooks/useCountdown";
 export type TimeBlock = {
   id: string;
   label: string;
-  startHour: number; // e.g. 9.5 for 9:30 AM
-  endHour: number;   // e.g. 11.0 for 11:00 AM
+  startHour: number;
+  endHour: number;
   color: string;
 };
 
@@ -28,7 +28,7 @@ export function CircularTimer({ blocks = [] }: Props) {
   const currentHours = now.getHours() + now.getMinutes() / 60 + now.getSeconds() / 3600;
   const currentAngle = (currentHours / 24) * 360;
 
-  const getArcPath = (startH: number, endH: number, radius = 120) => {
+  const getArcPath = (startH: number, endH: number, radius = 115) => {
     const startAngle = (startH / 24) * 360 - 90;
     const endAngle = (endH / 24) * 360 - 90;
 
@@ -46,37 +46,106 @@ export function CircularTimer({ blocks = [] }: Props) {
   };
 
   return (
-    <div style={{ textAlign: "center", padding: "10px 0" }}>
-      <svg width="280" height="280" viewBox="0 0 300 300" style={{ transform: "rotate(-90deg)" }}>
-        <circle cx="150" cy="150" r="130" fill="none" stroke="var(--border)" strokeWidth="4" />
-        <circle cx="150" cy="150" r="120" fill="var(--surface)" />
+    <div style={{ textAlign: "center", padding: "16px 0" }}>
+      <svg
+        width="290"
+        height="290"
+        viewBox="0 0 300 300"
+        style={{
+          filter: "drop-shadow(0px 8px 24px rgba(0, 0, 0, 0.35))",
+        }}
+      >
+        <defs>
+          {/* Outer ring subtle ambient gradient */}
+          <linearGradient id="ringBg" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#1e293b" />
+            <stop offset="100%" stopColor="#0f172a" />
+          </linearGradient>
 
+          {/* Sweeping hand neon gradient */}
+          <linearGradient id="handGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#ff4b5c" />
+            <stop offset="100%" stopColor="#ff6b81" />
+          </linearGradient>
+
+          {/* Glow effect filter */}
+          <filter id="neonGlow" x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur stdDeviation="3" result="blur" />
+            <feComposite in="SourceGraphic" in2="blur" operator="over" />
+          </filter>
+        </defs>
+
+        {/* Outer Minimalist Glass Ring */}
+        <circle cx="150" cy="150" r="132" fill="none" stroke="#334155" strokeWidth="1.5" opacity="0.6" />
+        
+        {/* Main Clock Face Background */}
+        <circle cx="150" cy="150" r="126" fill="url(#ringBg)" stroke="#1e293b" strokeWidth="4" />
+
+        {/* 24-Hour Tick Marks */}
+        {Array.from({ length: 24 }).map((_, i) => {
+          const angle = ((i / 24) * 360 - 90) * (Math.PI / 180);
+          const x1 = 150 + 120 * Math.cos(angle);
+          const y1 = 150 + 120 * Math.sin(angle);
+          const x2 = 150 + 124 * Math.cos(angle);
+          const y2 = 150 + 124 * Math.sin(angle);
+          return (
+            <line
+              key={i}
+              x1={x1}
+              y1={y1}
+              x2={x2}
+              y2={y2}
+              stroke={i % 6 === 0 ? "#94a3b8" : "#475569"}
+              strokeWidth={i % 6 === 0 ? 2 : 1}
+              opacity={0.7}
+            />
+          );
+        })}
+
+        {/* Dynamic Task Arcs */}
         {blocks.map((block) => (
           <path
             key={block.id}
             d={getArcPath(block.startHour, block.endHour)}
             fill={block.color}
-            opacity="0.8"
+            opacity="0.85"
+            style={{ transition: "all 0.3s ease" }}
           >
             <title>{`${block.label} (${block.startHour}:00 - ${block.endHour}:00)`}</title>
           </path>
         ))}
 
-        <circle cx="150" cy="150" r="8" fill="#3b82f6" />
+        {/* Inner Cutout (Donut Ring Effect) */}
+        <circle cx="150" cy="150" r="75" fill="#0f172a" stroke="#1e293b" strokeWidth="2" />
 
+        {/* Live Sweeping Hand with Glow */}
         <line
           x1="150"
           y1="150"
-          x2={150 + 110 * Math.cos(((currentAngle - 90) * Math.PI) / 180)}
-          y2={150 + 110 * Math.sin(((currentAngle - 90) * Math.PI) / 180)}
-          stroke="#ef4444"
-          strokeWidth="3"
+          x2={150 + 112 * Math.cos(((currentAngle - 90) * Math.PI) / 180)}
+          y2={150 + 112 * Math.sin(((currentAngle - 90) * Math.PI) / 180)}
+          stroke="url(#handGradient)"
+          strokeWidth="3.5"
           strokeLinecap="round"
+          filter="url(#neonGlow)"
         />
+
+        {/* Modern Center Pivot Dot */}
+        <circle cx="150" cy="150" r="7" fill="#ff4b5c" />
+        <circle cx="150" cy="150" r="3" fill="#ffffff" />
       </svg>
 
-      <div style={{ marginTop: "12px", fontWeight: "600" }}>
-        Current Time: {now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+      <div
+        style={{
+          marginTop: "16px",
+          fontSize: "1rem",
+          fontWeight: "600",
+          letterSpacing: "0.05em",
+          color: "#f8fafc",
+          fontFamily: "monospace",
+        }}
+      >
+        {now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
       </div>
     </div>
   );
