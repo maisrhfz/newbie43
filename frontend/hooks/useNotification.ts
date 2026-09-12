@@ -1,55 +1,33 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback, useEffect, useRef, useState } from "react";
 
-export interface UseNotificationReturn {
-  permission: NotificationPermission;
-  requestPermission: () => Promise<NotificationPermission>;
-  sendNotification: (title: string, options?: NotificationOptions) => void;
-}
+export function useNotification() {
+  const [permission, setPermission] = useState<NotificationPermission | "unsupported">(
+    typeof window !== "undefined" && "Notification" in window ? Notification.permission : "unsupported"
+  );
+  const firedKeysRef = useRef<Set<string>>(new Set());
 
-export function useNotification(): UseNotificationReturn {
-  const [permission, setPermission] = useState<NotificationPermission>('default');
+  const requestPermission = useCallback(async () => {
+    if (typeof window === "undefined" || !("Notification" in window)) {
+      setPermission("unsupported");
+      return;
+    }
+    const result = await Notification.requestPermission();
+    setPermission(result);
+  }, []);
+
+  const notifyOnce = useCallback((key: string, title: string, options?: NotificationOptions) => {
+    if (firedKeysRef.current.has(key)) return;
+    firedKeysRef.current.add(key);
+    if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
+      new Notification(title, options);
+    }
+  }, []);
 
   useEffect(() => {
-    if ('Notification' in window) {
-      setPermission(Notification.permission);
-    }
+    return () => { firedKeysRef.current.clear(); };
   }, []);
 
-  const requestPermission = useCallback(async (): Promise<NotificationPermission> => {
-    if (!('Notification' in window)) {
-      console.warn('This browser does not support desktop notifications.');
-      return 'denied';
-    }
-
-    try {
-      const result = await Notification.requestPermission();
-      setPermission(result);
-      return result;
-    } catch (error) {
-      console.error('Error requesting notification permission:', error);
-      return 'denied';
-    }
-  }, []);
-
-  const sendNotification = useCallback(
-    (title: string, options?: NotificationOptions) => {
-      if (!('Notification' in window)) return;
-
-      if (Notification.permission === 'granted') {
-        new Notification(title, options);
-      } else if (Notification.permission !== 'denied') {
-        Notification.requestPermission().then((res) => {
-          setPermission(res);
-          if (res === 'granted') {
-            new Notification(title, options);
-          }
-        });
-      }
-    },
-    []
-  );
-
-  return { permission, requestPermission, sendNotification };
+  return { permission, requestPermission, notifyOnce };
 }

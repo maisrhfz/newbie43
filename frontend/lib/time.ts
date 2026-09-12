@@ -1,65 +1,25 @@
-export interface DepartureCalculation {
-  eventDate: Date;
-  departureDate: Date;
-  totalMarginMinutes: number;
-  formattedDepartureTime: string;
+export function minutesUntil(target: Date, from: Date = new Date()): number {
+  return Math.round((target.getTime() - from.getTime()) / 60000);
 }
 
-/**
- * Parses an HTML datetime-local string (e.g. "2026-09-12T14:30") 
- * and calculates the exact date/time you need to leave.
- */
-export function calculateLatestDeparture(
-  datetimeLocalString: string,
-  travelTimeMinutes: number,
-  bufferMinutes: number
-): DepartureCalculation | null {
-  if (!datetimeLocalString) return null;
+export type Urgency = "plenty" | "soon" | "leave-now" | "late";
 
-  const eventDate = new Date(datetimeLocalString);
-  if (isNaN(eventDate.getTime())) return null;
-
-  const totalMarginMinutes = travelTimeMinutes + bufferMinutes;
-  const departureDate = new Date(eventDate.getTime() - totalMarginMinutes * 60 * 1000);
-
-  const formattedDepartureTime = departureDate.toLocaleTimeString([], {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-
-  return {
-    eventDate,
-    departureDate,
-    totalMarginMinutes,
-    formattedDepartureTime,
-  };
+export function urgencyFor(minutesLeft: number): Urgency {
+  if (minutesLeft <= 0) return "late";
+  if (minutesLeft <= 5) return "leave-now";
+  if (minutesLeft <= 20) return "soon";
+  return "plenty";
 }
 
-/**
- * Formats seconds into a clean human-readable countdown string (e.g., "14m 05s")
- */
-export function formatSecondsToCountdown(totalSeconds: number): string {
-  if (totalSeconds <= 0) return '00m 00s';
-  const mins = Math.floor(totalSeconds / 60);
-  const secs = totalSeconds % 60;
-  return `${mins}m ${secs < 10 ? '0' : ''}${secs}s`;
+export function formatClock(d: Date): string {
+  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
-/**
- * Helper to get default datetime-local string (defaults to current time + 1 hour)
- */
-export function getDefaultEventTimeString(): string {
-  const now = new Date();
-  now.setHours(now.getHours() + 1);
-  now.setMinutes(0);
-  now.setSeconds(0);
-  
-  // Format to local ISO string without timezone offset for datetime-local input
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
-  const hours = String(now.getHours()).padStart(2, '0');
-  const minutes = String(now.getMinutes()).padStart(2, '0');
-
-  return `${year}-${month}-${day}T${hours}:${minutes}`;
+export function formatCountdown(minutes: number): string {
+  const sign = minutes < 0 ? "-" : "";
+  const abs = Math.abs(minutes);
+  const h = Math.floor(abs / 60);
+  const m = abs % 60;
+  if (h > 0) return `${sign}${h}h ${m}m`;
+  return `${sign}${m}m`;
 }

@@ -1,51 +1,42 @@
-/* eslint-disable-next-line */
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-@layer base {
-  body {
-    margin: 0;
-    padding: 0;
-    font-family: sans-serif;
-  }
-}
-
-/* --- LocationPicker --- */
-
-.location-picker {
-  border: 1px solid var(--border);
+.departure-banner {
   border-radius: 10px;
-  padding: 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+  padding: 18px;
+  margin-bottom: 18px;
+  border: 1px solid var(--border);
 }
 
-.location-picker-title {
-  font-weight: 600;
-  font-size: 0.9rem;
+.departure-banner-headline {
+  font-weight: 700;
+  font-size: 1.15rem;
+  margin-bottom: 4px;
 }
 
-.manual-entry summary {
-  cursor: pointer;
-  font-size: 0.82rem;
+.departure-banner-countdown {
+  font-size: 1.4rem;
+  margin-bottom: 6px;
+}
+
+.departure-banner-details {
+  font-size: 0.85rem;
   color: var(--text-muted);
 }
 
-.manual-entry-row {
-  display: flex;
-  gap: 8px;
-  margin-top: 8px;
+.urgency-plenty {
+  background: color-mix(in srgb, var(--ok) 12%, var(--surface));
+  border-color: var(--ok);
 }
+.urgency-plenty .departure-banner-headline { color: var(--ok); }
 
-.manual-entry-row input {
-  flex: 1;
-  min-width: 0;
+.urgency-soon {
+  background: color-mix(in srgb, var(--warn) 15%, var(--surface));
+  border-color: var(--warn);
 }
+.urgency-soon .departure-banner-headline { color: var(--warn); }
 
-.resolved-label {
-  margin: 0;
-  font-size: 0.85rem;
-  color: var(--ok);
+.urgency-leave-now,
+.urgency-late {
+  background: color-mix(in srgb, var(--danger) 15%, var(--surface));
+  border-color: var(--danger);
 }
+.urgency-leave-now .departure-banner-headline,
+.urgency-late .departure-banner-headline { color: var(--danger); }

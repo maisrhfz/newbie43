@@ -1,86 +1,54 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
+import { useEffect } from "react";
+import { useNow } from "@/hooks/useCountdown";
+import { useNotification } from "@/hooks/useNotification";
+import { formatClock, formatCountdown, minutesUntil, urgencyFor } from "@/lib/time";
 
-interface DepartureBannerProps {
-  latestDeparture: Date;
-  nearestStation?: string;
-  travelTimeMinutes?: number;
-  isFallback?: boolean;
-}
+type Props = { eventTime: string; departureDeadline: string };
 
-export default function DepartureBanner({
-  latestDeparture,
-  nearestStation = 'Local Stop',
-  travelTimeMinutes,
-  isFallback = false,
-}: DepartureBannerProps) {
-  const [secondsRemaining, setSecondsRemaining] = useState<number | null>(null);
-  const [notified, setNotified] = useState<boolean>(false);
+const URGENCY_COPY: Record<string, string> = {
+  plenty: "You're on track",
+  soon: "Get ready to leave",
+  "leave-now": "Leave now!",
+  late: "You're going to be late",
+};
 
-  // Live Ticking Countdown
+export function DepartureBanner({ eventTime, departureDeadline }: Props) {
+  const now = useNow(1000);
+  const deadline = new Date(departureDeadline);
+  const event = new Date(eventTime);
+  const minutesLeft = minutesUntil(deadline, now);
+  const urgency = urgencyFor(minutesLeft);
+  const { permission, requestPermission, notifyOnce } = useNotification();
+
   useEffect(() => {
-    const updateCountdown = () => {
-      const now = new Date().getTime();
-      const diff = Math.floor((latestDeparture.getTime() - now) / 1000);
-      setSecondsRemaining(diff);
+    if (permission === "default") requestPermission();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-      // Trigger Browser Notification when under 5 minutes (300 seconds)
-      if (diff <= 300 && diff > 0 && !notified) {
-        if ('Notification' in window && Notification.permission === 'granted') {
-          new Notification('Time to Leave Soon!', {
-            body: 'You need to head out shortly to make your event on time.',
-          });
-          setNotified(true);
-        } else if ('Notification' in window && Notification.permission !== 'denied') {
-          Notification.requestPermission();
-        }
-      }
-    };
-
-    updateCountdown();
-    const interval = setInterval(updateCountdown, 1000);
-    return () => clearInterval(interval);
-  }, [latestDeparture, notified]);
-
-  // Color-coded Banner Logic
-  const getBannerColor = () => {
-    if (secondsRemaining === null) return 'bg-slate-700';
-    if (secondsRemaining <= 0) return 'bg-red-600 animate-pulse'; // Urgent / Late
-    if (secondsRemaining <= 300) return 'bg-yellow-500'; // Under 5 mins
-    return 'bg-emerald-600'; // Safe
-  };
-
-  const formatCountdown = (totalSeconds: number) => {
-    if (totalSeconds <= 0) return '🚨 You should leave right now!';
-    const mins = Math.floor(totalSeconds / 60);
-    const secs = totalSeconds % 60;
-    return `Leave in: ${mins}m ${secs < 10 ? '0' : ''}${secs}s`;
-  };
+  useEffect(() => {
+    const key = `${departureDeadline}:${urgency}`;
+    if (urgency === "leave-now") {
+      notifyOnce(key, "Time to leave!", { body: `Leave now to make it by ${formatClock(event)}.` });
+    } else if (urgency === "late") {
+      notifyOnce(key, "You're running late", { body: `Departure deadline was ${formatClock(deadline)}.` });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [urgency, departureDeadline]);
 
   return (
-    <div className={`p-5 rounded-xl text-white shadow-md transition-colors ${getBannerColor()}`}>
-      <div className="text-xs uppercase font-medium opacity-80 tracking-wide">
-        Latest Departure Window
+    <div className={`departure-banner urgency-${urgency}`} role="status" aria-live="polite">
+      <div className="departure-banner-headline">{URGENCY_COPY[urgency]}</div>
+      <div className="departure-banner-countdown">
+        {urgency === "late" ? "Deadline passed " : "Leave in "}
+        <strong>{formatCountdown(minutesLeft)}</strong>
       </div>
-      
-      <div className="text-3xl font-black my-1">
-        {latestDeparture.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+      <div className="departure-banner-details">
+        Latest departure: <strong>{formatClock(deadline)}</strong> · Event starts <strong>{formatClock(event)}</strong>
       </div>
-
-      <div className="text-sm font-semibold">
-        {secondsRemaining !== null ? formatCountdown(secondsRemaining) : 'Calculating...'}
-      </div>
-
-      <div className="mt-3 pt-3 border-t border-white/20 text-xs flex justify-between items-center">
-        <span>Stop: {nearestStation}</span>
-        {travelTimeMinutes !== undefined && <span>Est. travel: {travelTimeMinutes} mins</span>}
-      </div>
-
-      {isFallback && (
-        <div className="mt-2 text-[10px] bg-black/20 p-1 rounded text-center">
-          ⚠️ Simulated speed route (Add ODSAY_API_KEY for live data)
-        </div>
+      {permission === "denied" && (
+        <p className="hint">Browser notifications are blocked — keep this tab open to see the countdown update.</p>
       )}
     </div>
   );
