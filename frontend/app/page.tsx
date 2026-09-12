@@ -1,10 +1,12 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { EventForm, type TripPlan } from "@/components/EventForm";
 import { DepartureBanner } from "@/components/DepartureBanner";
 import { CircularTimer, type TimeBlock } from "@/components/CircularTimer";
+import { GroupMeetupPlanner, type GroupParticipant } from "@/components/GroupMeetupPlanner";
 import { getNaverMapUrl } from "@/lib/presets";
+import type { LatLng } from "@/lib/types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
 
@@ -26,14 +28,11 @@ type ApiResponse = {
   odsayConfigured: boolean;
 };
 
-// Helper: Converts decimal hours (e.g. 17.8333) into a clean clock string (e.g. "17:50")
 const formatDecimalToTime = (decimalHours: number): string => {
   const hours = Math.floor(decimalHours);
   const minutes = Math.round((decimalHours - hours) * 60);
-
   const formattedH = String(hours % 24).padStart(2, "0");
   const formattedM = String(minutes).padStart(2, "0");
-
   return `${formattedH}:${formattedM}`;
 };
 
@@ -42,36 +41,54 @@ export default function Home() {
   const [lastPlan, setLastPlan] = useState<TripPlan | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const buildShareText = (): string => {
 
-  // Dynamic To-Do List State
+    if (!result || !lastPlan) return "";
+    const leaveTime = new Date(result.departureDeadline).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    const eventTime = new Date(result.eventTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    const modeLabel = result.estimate.mode === "walk" ? "🚶 walking" : result.estimate.mode === "transit" ? "🚇 transit" : "🚗 driving";
+    return `📍 Heading to ${lastPlan.destinationLabel ?? "the event"} (starts ${eventTime})\n⏰ Leaving by ${leaveTime} — ${modeLabel}, ~${result.estimate.totalTravelMinutes} min\nMade with "Will I be late?" 🕒`;
+  };
+
+  const handleShare = async () => {
+    const text = buildShareText();
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setCopied(false);
+    }
+  };
+
   const [tasks, setTasks] = useState<TimeBlock[]>([
     { id: "1", label: "Morning Study", startHour: 9, endHour: 12, color: "#3b82f6" },
     { id: "2", label: "Lunch", startHour: 12, endHour: 13, color: "#10b981" },
   ]);
 
-  // Task Input Form State
   const [taskLabel, setTaskLabel] = useState("");
   const [startHour, setStartHour] = useState("14");
   const [endHour, setEndHour] = useState("16");
+
+  const [participants, setParticipants] = useState<GroupParticipant[]>([]);
 
   const dateToDecimalHours = (dateString: string): number => {
     const d = new Date(dateString);
     return d.getHours() + d.getMinutes() / 60;
   };
 
-  // Add a custom task to the schedule
   const handleAddTask = (e: React.FormEvent) => {
     e.preventDefault();
     if (!taskLabel.trim()) return;
-
     const newTask: TimeBlock = {
       id: Date.now().toString(),
       label: taskLabel.trim(),
       startHour: parseFloat(startHour),
       endHour: parseFloat(endHour),
-      color: "#8b5cf6", // Purple for custom tasks
+      color: "#8b5cf6",
     };
-
     setTasks([...tasks, newTask]);
     setTaskLabel("");
   };
@@ -80,25 +97,84 @@ export default function Home() {
     setTasks(tasks.filter((t) => t.id !== id));
   };
 
-  // Combine custom To-Do tasks with the calculated NAVER commute window
   const combinedBlocks = useMemo(() => {
     const allBlocks = [...tasks];
-
     if (result) {
       const depH = dateToDecimalHours(result.departureDeadline);
       const eventH = dateToDecimalHours(result.eventTime);
-
       allBlocks.push({
         id: "commute-naver",
         label: "NAVER Commute & Trip",
         startHour: depH,
         endHour: eventH > depH ? eventH : depH + 1,
-        color: "#03C75A", // NAVER Green
+        color: "#03C75A",
       });
     }
-
     return allBlocks;
   }, [tasks, result]);
+
+  // Keep "You" (the main submitter) synced as a participant in the group list
+  useEffect(() => {
+    if (result && lastPlan) {
+      setParticipants((prev) => {
+        const others = prev.filter((p) => p.id !== "you");
+        return [
+          {
+            id: "you",
+            name: "You",
+            origin: lastPlan.origin,
+            originLabel: lastPlan.originLabel,
+            status: "success",
+            departureDeadline: result.departureDeadline,
+            totalTravelMinutes: result.estimate.totalTravelMinutes,
+          },
+          ...others,
+        ];
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [result, lastPlan]);
+
+  const addParticipant = async (name: string, origin: LatLng, originLabel: string) => {
+    if (!lastPlan) {
+      setApiError("Submit the event details above first, then add group members.");
+      return;
+    }
+    const id = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    setParticipants((prev) => [...prev, { id, name, origin, originLabel, status: "loading" }]);
+
+    try {
+      const res = await fetch(`${API_BASE}/api/route`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          origin,
+          originLabel,
+          destination: lastPlan.destination,
+          destinationLabel: lastPlan.destinationLabel,
+          eventTime: lastPlan.eventTime,
+          bufferMinutes: lastPlan.bufferMinutes,
+          mode: lastPlan.mode,
+        }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error ?? `Request failed (${res.status})`);
+      }
+      const data = await res.json();
+      setParticipants((prev) =>
+        prev.map((p) =>
+          p.id === id
+            ? { ...p, status: "success", departureDeadline: data.departureDeadline, totalTravelMinutes: data.estimate.totalTravelMinutes }
+            : p
+        )
+      );
+    } catch (err: any) {
+      setParticipants((prev) => prev.map((p) => (p.id === id ? { ...p, status: "error", error: err.message ?? "Request failed" } : p)));
+    }
+  };
+
+  const removeParticipant = (id: string) => setParticipants((prev) => prev.filter((p) => p.id !== id));
 
   const handleSubmit = async (plan: TripPlan) => {
     const originLat = plan.origin?.lat ?? 0;
@@ -160,12 +236,10 @@ export default function Home() {
         {apiError && <p className="hint hint-error">{apiError}</p>}
       </section>
 
-      {/* 24-Hour Ring & Task Manager Section */}
       <section className="card" style={{ marginTop: 20 }}>
         <h2>Daily Routine & Live Ring</h2>
         <CircularTimer blocks={combinedBlocks} />
 
-        {/* Add Task Form */}
         <form onSubmit={handleAddTask} style={{ display: "flex", gap: 8, marginTop: 16, flexWrap: "wrap" }}>
           <input
             type="text"
@@ -189,7 +263,6 @@ export default function Home() {
           </button>
         </form>
 
-        {/* Task List */}
         <div style={{ marginTop: 16 }}>
           <h3>Today&apos;s Scheduled Tasks</h3>
           <ul style={{ listStyle: "none", padding: 0 }}>
@@ -224,7 +297,14 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Trip Results & NAVER Map Button */}
+      {lastPlan && (
+        <section className="card" style={{ marginTop: 20 }}>
+          <h2>Group meetup</h2>
+          <p className="subtitle">Add everyone else coming to this event — we&apos;ll work out each person&apos;s own leave-by time.</p>
+          <GroupMeetupPlanner participants={participants} onAdd={addParticipant} onRemove={removeParticipant} />
+        </section>
+      )}
+
       {result && lastPlan && (
         <section className="card" style={{ marginTop: 20 }}>
           <DepartureBanner eventTime={result.eventTime} departureDeadline={result.departureDeadline} />
@@ -232,6 +312,19 @@ export default function Home() {
           <div className="trip-breakdown">
             <h2>Trip breakdown</h2>
             <ul>
+              {(() => {
+                    const distanceKm = result.estimate.distanceMeters / 1000;
+                    const isLongWalk = result.estimate.mode === "walk" && distanceKm > 3;
+                    const isLongDistance = distanceKm > 15;
+                    if (!isLongWalk && !isLongDistance) return null;
+                    return (
+                      <p className="distance-warning">
+                        {isLongDistance
+                          ? `⚠️ This event is ${distanceKm.toFixed(1)} km away — that's beyond what this app's estimator is built for (campus-area walking/bus/subway). For trips this long, double-check real bus/train schedules directly, since this number may not be accurate.`
+                          : `⚠️ That's a ${distanceKm.toFixed(1)} km walk — likely 30+ minutes on foot. Consider switching to Transit or Drive above for a more realistic time.`}
+                      </p>
+                    );
+                  })()}
               <li>Mode: {result.estimate.mode}</li>
               <li>Distance: {(result.estimate.distanceMeters / 1000).toFixed(2)} km</li>
               <li>Total travel time: {result.estimate.totalTravelMinutes} min</li>
@@ -248,6 +341,9 @@ export default function Home() {
               <li>Buffer added: {result.bufferMinutes} min</li>
             </ul>
 
+            <button type="button" className="btn btn-secondary" style={{ width: "100%", marginTop: "0.75rem" }} onClick={handleShare}>
+              {copied ? "✓ Copied to clipboard!" : "📋 Share this plan"}
+            </button>
             {lastPlan.origin && lastPlan.destination && (
               <div style={{ marginTop: "1.25rem" }}>
                 <a
@@ -271,7 +367,7 @@ export default function Home() {
                     textDecoration: "none",
                   }}
                 >
-                  🗺️ Open Route in NAVER Map
+                  Open Route in NAVER Map
                 </a>
               </div>
             )}
