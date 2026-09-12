@@ -158,6 +158,7 @@ export default function Home() {
     setTasks(tasks.filter((t) => t.id !== id));
   };
 
+  // Chronologically sorted blocks (susunan ikut masa)
   const combinedBlocks = useMemo(() => {
     const allBlocks = [...tasks];
     if (result) {
@@ -171,7 +172,7 @@ export default function Home() {
         color: "#03C75A",
       });
     }
-    return allBlocks;
+    return allBlocks.sort((a, b) => a.startHour - b.startHour);
   }, [tasks, result]);
 
   // Keep "You" (the main submitter) synced as a participant in the group list
