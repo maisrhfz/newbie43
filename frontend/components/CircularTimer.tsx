@@ -26,14 +26,12 @@ export function CircularTimer({ blocks = [] }: Props) {
   if (!isMounted) return <div style={{ height: 320 }} />;
 
   const currentHours = now.getHours() + now.getMinutes() / 60 + now.getSeconds() / 3600;
-  
-  // 24-hour circle math: 24 hours = 360 degrees. 
-  // We subtract 90 degrees so that 00:00 starts at the top (12 o'clock position).
-  const currentAngle = (currentHours / 24) * 360 - 90;
+  const displayHours = currentHours % 12; // 0-12 instead of 0-24
+  const currentAngle = (displayHours / 12) * 360 - 90;
 
   const getArcPath = (startH: number, endH: number, radius = 115) => {
-    const startAngle = (startH / 24) * 360 - 90;
-    const endAngle = (endH / 24) * 360 - 90;
+    const startAngle = ((startH % 12) / 12) * 360 - 90;
+    const endAngle = ((endH % 12) / 12) * 360 - 90;
 
     const startRad = (startAngle * Math.PI) / 180;
     const endRad = (endAngle * Math.PI) / 180;
@@ -44,7 +42,7 @@ export function CircularTimer({ blocks = [] }: Props) {
     const y2 = 150 + radius * Math.sin(endRad);
 
     const diff = endH - startH;
-    const largeArcFlag = diff > 12 || (diff < 0 && (24 + diff) > 12) ? 1 : 0;
+    const largeArcFlag = diff > 6 || (diff < 0 && (12 + diff) > 6) ? 1 : 0;
 
     return `M 150 150 L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArcFlag} 1 ${x2} ${y2} Z`;
   };
@@ -79,9 +77,9 @@ export function CircularTimer({ blocks = [] }: Props) {
         <circle cx="150" cy="150" r="132" fill="none" stroke="#334155" strokeWidth="1.5" opacity="0.6" />
         <circle cx="150" cy="150" r="126" fill="url(#ringBg)" stroke="#1e293b" strokeWidth="4" />
 
-        {/* 24-Hour Tick Marks */}
-        {Array.from({ length: 24 }).map((_, i) => {
-          const angle = ((i / 24) * 360 - 90) * (Math.PI / 180);
+        {/* 12-Hour Tick Marks */}
+        {Array.from({ length: 12 }).map((_, i) => {
+          const angle = ((i / 12) * 360 - 90) * (Math.PI / 180);
           const x1 = 150 + 120 * Math.cos(angle);
           const y1 = 150 + 120 * Math.sin(angle);
           const x2 = 150 + 124 * Math.cos(angle);
@@ -93,8 +91,8 @@ export function CircularTimer({ blocks = [] }: Props) {
               y1={y1}
               x2={x2}
               y2={y2}
-              stroke={i % 6 === 0 ? "#94a3b8" : "#475569"}
-              strokeWidth={i % 6 === 0 ? 2 : 1}
+              stroke={i % 3 === 0 ? "#94a3b8" : "#475569"}
+              strokeWidth={i % 3 === 0 ? 2 : 1}
               opacity={0.7}
             />
           );
