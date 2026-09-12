@@ -435,7 +435,7 @@ export default function Home() {
                 <MapEmbed origin={lastPlan.origin} destination={lastPlan.destination} />
 
                 <div style={{ marginTop: "1rem" }}>
-                  
+                 <a 
                     href={getNaverMapUrl(
                       lastPlan.origin,
                       lastPlan.destination,
