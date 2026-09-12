@@ -52,10 +52,25 @@ export default function Home() {
 
   const buildShareText = (): string => {
     if (!result || !lastPlan) return "";
-    const leaveTime = new Date(result.departureDeadline).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     const eventTime = new Date(result.eventTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-    const modeLabel = result.estimate.mode === "walk" ? "🚶 walking" : result.estimate.mode === "transit" ? "🚇 transit" : "🚗 driving";
-    return `📍 Heading to ${lastPlan.destinationLabel ?? "the event"} (starts ${eventTime})\n⏰ Leaving by ${leaveTime} — ${modeLabel}, ~${result.estimate.totalTravelMinutes} min\nMade with "Will I be late?" 🕒`;
+    const lines = [`📍 Heading to ${lastPlan.destinationLabel ?? "the event"} (starts ${eventTime})`];
+
+    const successful = participants
+      .filter((p) => p.status === "success" && p.departureDeadline)
+      .sort((a, b) => new Date(a.departureDeadline!).getTime() - new Date(b.departureDeadline!).getTime());
+
+    if (successful.length > 0) {
+      successful.forEach((p) => {
+        const leaveTime = new Date(p.departureDeadline!).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+        lines.push(`⏰ ${p.name}: leave by ${leaveTime}`);
+      });
+    } else {
+      const leaveTime = new Date(result.departureDeadline).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      lines.push(`⏰ Leaving by ${leaveTime}`);
+    }
+
+    lines.push(`Made with "Will I be late?" 🕒`);
+    return lines.join("\n");
   };
 
   const handleShare = async () => {
