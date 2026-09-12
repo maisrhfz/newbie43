@@ -96,8 +96,8 @@ export default function Home() {
   const buildShareText = (): string => {
     if (!result || !lastPlan) return "";
     const eventTime = new Date(result.eventTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-    const lines = [`📍 Heading to ${lastPlan.destinationLabel ?? "the event"} (starts ${eventTime})`];
-
+    const lines = [`Heading to ${lastPlan.destinationLabel ?? "the event"} (starts ${eventTime})`];
+    lines.push("");
     const successful = participants
       .filter((p) => p.status === "success" && p.departureDeadline)
       .sort((a, b) => new Date(a.departureDeadline!).getTime() - new Date(b.departureDeadline!).getTime());
@@ -112,7 +112,8 @@ export default function Home() {
       lines.push(`⏰ Leaving by ${leaveTime}`);
     }
 
-    lines.push(`Made with "Will I be late?" 🕒`);
+    lines.push("");
+    lines.push(`Made with NAVER Late `);
     return lines.join("\n");
   };
 
@@ -445,8 +446,8 @@ export default function Home() {
       {lastPlan && (
         <div style={{ gridColumn: "1 / -1", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(380px, 1fr))", gap: "20px" }}>
           <section className="card">
-            <h2>Group meetup</h2>
-            <p className="subtitle">Add everyone else coming to this event — we&apos;ll work out each person&apos;s own leave-by time.</p>
+            <h1>Group Meetup</h1>
+            <p className="subtitle">Add everyone else coming to this event.</p>
             <GroupMeetupPlanner participants={participants} onAdd={addParticipant} onRemove={removeParticipant} />
           </section>
 
@@ -487,7 +488,7 @@ export default function Home() {
                 </ul>
 
                 <button type="button" className="btn btn-secondary" style={{ width: "100%", marginTop: "0.75rem" }} onClick={handleShare}>
-                  {copied ? "✓ Copied to clipboard!" : "📋 Share this plan"}
+                  {copied ? "✓ Copied to clipboard!" : "SHARE"}
                 </button>
 
                 {lastPlan.origin && lastPlan.destination && (
@@ -517,7 +518,7 @@ export default function Home() {
                           boxShadow: "0 4px 12px rgba(3, 199, 90, 0.25)",
                         }}
                       >
-                        🗺️ Open Route in NAVER Map
+                        Open Route in NAVER Map
                       </a>
                     </div>
                   </>

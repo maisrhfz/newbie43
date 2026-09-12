@@ -82,7 +82,7 @@ export function GroupMeetupPlanner({ participants, onAdd, onRemove }: Props) {
           <input type="text" placeholder="e.g. Minji" value={name} onChange={(e) => setName(e.target.value)} />
         </label>
         <LocationPicker
-          title="Where are they starting from?"
+          title="Starting From"
           allowGeolocation={false}
           onResolved={(coords, label) => { setPendingOrigin(coords); setPendingLabel(label); }}
           resolvedLabel={pendingLabel}
