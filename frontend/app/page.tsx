@@ -291,7 +291,7 @@ export default function Home() {
     <main className="page">
       {/* Column 1: Route Calculator & Planner */}
       <section className="card">
-        <h1>24-Hour Visual Day & Departure Planner</h1>
+        <h1>Departure Planner</h1>
         <p className="subtitle">
           Set your commute route and plan your daily task schedule on a live visual clock ring.
         </p>
@@ -301,7 +301,7 @@ export default function Home() {
 
       {/* Column 2: 24-Hour Ring & Modern Task Manager Section */}
       <section className="card">
-        <h2>Daily Routine & Live Ring</h2>
+        <h1>Daily Routine & Live Ring</h1>
         <CircularTimer blocks={combinedBlocks} />
 
         {/* Modern Control Bar with Precise Time Selection */}

@@ -55,7 +55,7 @@ export function EventForm({ onSubmit, submitting }: Props) {
     <form className="event-form" onSubmit={handleSubmit}>
       <div className="picker-grid">
         <LocationPicker
-          title="Where are you now?"
+          title="My Location"
           allowGeolocation
           onResolved={(coords, label) => {
             setOrigin(coords);
@@ -64,7 +64,7 @@ export function EventForm({ onSubmit, submitting }: Props) {
           resolvedLabel={originLabel}
         />
         <LocationPicker
-          title="Where's the event?"
+          title="Event Location"
           onResolved={(coords, label) => {
             setDestination(coords);
             setDestinationLabel(label);
