@@ -1,12 +1,79 @@
-/* eslint-disable-next-line */
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
 
-@layer base {
-  body {
-    margin: 0;
-    padding: 0;
-    font-family: sans-serif;
+:root {
+  --border: #e2e8f0;
+  --surface: #ffffff;
+  --text-muted: #64748b;
+  --ok: #16a34a;
+  --warn: #d97706;
+  --danger: #dc2626;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --border: #334155;
+    --surface: #0f172a;
+    --text-muted: #94a3b8;
   }
 }
+
+* --- DepartureBanner --- */
+
+:root {
+  --border: #e2e8f0;
+  --surface: #ffffff;
+  --text-muted: #64748b;
+  --ok: #16a34a;
+  --warn: #d97706;
+  --danger: #dc2626;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --border: #334155;
+    --surface: #0f172a;
+    --text-muted: #94a3b8;
+  }
+}
+
+.departure-banner {
+  border-radius: 10px;
+  padding: 18px;
+  margin-bottom: 18px;
+  border: 1px solid var(--border);
+}
+
+.departure-banner-headline {
+  font-weight: 700;
+  font-size: 1.15rem;
+  margin-bottom: 4px;
+}
+
+.departure-banner-countdown {
+  font-size: 1.4rem;
+  margin-bottom: 6px;
+}
+
+.departure-banner-details {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.urgency-plenty {
+  background: color-mix(in srgb, var(--ok) 12%, var(--surface));
+  border-color: var(--ok);
+}
+.urgency-plenty .departure-banner-headline { color: var(--ok); }
+
+.urgency-soon {
+  background: color-mix(in srgb, var(--warn) 15%, var(--surface));
+  border-color: var(--warn);
+}
+.urgency-soon .departure-banner-headline { color: var(--warn); }
+
+.urgency-leave-now,
+.urgency-late {
+  background: color-mix(in srgb, var(--danger) 15%, var(--surface));
+  border-color: var(--danger);
+}
+.urgency-leave-now .departure-banner-headline,
+.urgency-late .departure-banner-headline { color: var(--danger); }
