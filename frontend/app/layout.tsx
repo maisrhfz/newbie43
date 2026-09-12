@@ -12,7 +12,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" suppressHydrationWarning>
       <body>
         <header className="site-header">
-          <span className="site-title">🕒 NAVER Late</span>
+          <span className="site-title">NAVER Late</span>
           <ThemeToggle />
         </header>
         {children}
